@@ -162,14 +162,12 @@ class GCFilterWorker {
 
         this.healthServer = http.createServer((req, res) => {
             if (req.url === '/health' || req.url === '/') {
-                const status = this.getStatus();
                 res.writeHead(200, { 'Content-Type': 'application/json' });
                 res.end(JSON.stringify({
                     status: 'ok',
-                    uptime: status.uptime,
+                    uptime: process.uptime(),
                     filterWorker: {
-                        running: status.filterWorker.running,
-                        inCooldown: status.filterWorker.inCooldown
+                        running: this.filterWorkerRunning
                     }
                 }));
             } else {
