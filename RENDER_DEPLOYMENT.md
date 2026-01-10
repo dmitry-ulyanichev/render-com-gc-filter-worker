@@ -90,7 +90,10 @@ Click **Create Web Service** - Render will automatically build and deploy.
 
 ### Monitor Instance
 
-- **Logs**: Real-time in Render dashboard
+- **Logs**: **Only available in Render dashboard** (no file logging on ephemeral filesystem)
+  - Real-time logs in **Logs** tab
+  - Application automatically detects Render environment and skips file logging
+  - All log output goes to stdout/stderr (captured by Render)
 - **Cooldown State**: Check via API endpoint `GET /cooldown/:instanceId`
 - **Health**: Monitor for Steam rate limit bans and escalating cooldowns
 
@@ -108,11 +111,12 @@ Instances auto-coordinate through Redis - no manual load balancing required.
 ### Free Tier Limitations
 
 Render free tier:
-- Spins down after 15 min inactivity
-- Cold start delay (~30-60 sec)
-- 750 hours/month limit per account
+- **Spins down after 15 min inactivity** (auto-wakes on queue activity)
+- **Cold start delay** (~30-60 sec when waking)
+- **750 hours/month limit** per account
+- **Ephemeral filesystem** - no persistent file storage (logs only in dashboard)
 
-For 24/7 operation, upgrade to paid instance ($7/month).
+For 24/7 operation with better reliability, upgrade to paid instance ($7/month).
 
 ### Secret Files Update
 

@@ -14,6 +14,9 @@ const CONFIG = {
     CONFIG_PATH: path.join(__dirname, 'config.json'),
     COOLDOWN_STATE_PATH: path.join(__dirname, 'cooldown-state.json'),
 
+    // Detect cloud environment (Render, Heroku, etc.) - skip file logging on ephemeral filesystems
+    ENABLE_FILE_LOGGING: !process.env.RENDER && !process.env.DYNO,
+
     // Escalating cooldown levels (in minutes)
     COOLDOWN_LEVELS: [
         0,           // Level 0: No cooldown (first attempt)
@@ -27,8 +30,10 @@ const CONFIG = {
 
 // Ensure directories exist
 function initializeEnvironment() {
-    // Create logs directory
-    fs.mkdirSync(CONFIG.LOG_DIR, { recursive: true });
+    // Create logs directory only if file logging is enabled
+    if (CONFIG.ENABLE_FILE_LOGGING) {
+        fs.mkdirSync(CONFIG.LOG_DIR, { recursive: true });
+    }
 
     // Check for required config file
     if (!fs.existsSync(CONFIG.CONFIG_PATH)) {
@@ -49,8 +54,16 @@ function logToFile(message, type = 'info') {
 
     console.log(logMessage.trim());
 
-    const logFile = type === 'error' ? 'gc_worker_error.log' : 'gc_worker_main.log';
-    fs.appendFileSync(path.join(CONFIG.LOG_DIR, logFile), logMessage);
+    // Only write to file if file logging is enabled (disabled on cloud platforms with ephemeral filesystems)
+    if (CONFIG.ENABLE_FILE_LOGGING) {
+        try {
+            const logFile = type === 'error' ? 'gc_worker_error.log' : 'gc_worker_main.log';
+            fs.appendFileSync(path.join(CONFIG.LOG_DIR, logFile), logMessage);
+        } catch (error) {
+            // If file logging fails, at least we have console output
+            console.error(`Failed to write to log file: ${error.message}`);
+        }
+    }
 }
 
 // Cooldown state management (now handled by CooldownStateManager in constructor)
@@ -175,7 +188,11 @@ class GCFilterWorker {
             this.startFilterWorkerMonitoring();
 
             logToFile('GC Filter Worker started successfully!');
-            logToFile('Check logs in: logs/');
+            if (CONFIG.ENABLE_FILE_LOGGING) {
+                logToFile('Check logs in: logs/');
+            } else {
+                logToFile('File logging disabled (cloud environment detected - check platform dashboard for logs)');
+            }
             logToFile(`Cooldown state persisted in Redis (instance: ${this.instanceId})`);
 
         } catch (error) {
