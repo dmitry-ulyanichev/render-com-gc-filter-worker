@@ -108,7 +108,7 @@ class CooldownStateManager {
             try {
                 const response = await makeApiRequest(
                     'GET',
-                    `/cooldown/${this.instanceId}`,
+                    `cooldown/${this.instanceId}`,
                     null,
                     this.config
                 );
@@ -156,7 +156,7 @@ class CooldownStateManager {
             try {
                 await makeApiRequest(
                     'POST',
-                    `/cooldown/${this.instanceId}`,
+                    `cooldown/${this.instanceId}`,
                     state,
                     this.config
                 );
@@ -194,7 +194,7 @@ class CooldownStateManager {
             try {
                 await makeApiRequest(
                     'DELETE',
-                    `/cooldown/${this.instanceId}`,
+                    `cooldown/${this.instanceId}`,
                     null,
                     this.config
                 );

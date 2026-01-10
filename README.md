@@ -24,7 +24,7 @@ GC filtering is the bottleneck due to Steam rate limits. By isolating this opera
 
 ### Environment Variables
 ```bash
-NODE_API_SERVICE_URL=https://kuchababok.online/api/node  # URL to your main server's node_api_service
+NODE_API_SERVICE_URL=https://kuchababok.online/api/node/  # URL to your main server's node_api_service
 LINK_HARVESTER_API_KEY=your_api_key           # API key for queue access
 ```
 
@@ -33,7 +33,7 @@ LINK_HARVESTER_API_KEY=your_api_key           # API key for queue access
 Copy `config.json.example` to `config.json` and fill in:
 - `steam_username`: Your Steam account username
 - `steam_password`: Your Steam account password
-- `queue_api_url`: URL to node_api_service (default: https://kuchababok.online/api/node)
+- `queue_api_url`: URL to node_api_service (default: https://kuchababok.online/api/node/)
 - `mark_processed_api_url`: Django API endpoint for marking IDs as processed
 
 ## Running

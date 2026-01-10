@@ -10,7 +10,7 @@ Before deploying, prepare:
 2. **steamauth.maFile** - Steam Guard authentication file for the account
 3. **API Credentials** - From your main server:
    - `LINK_HARVESTER_API_KEY` (same as other instances)
-   - Node API service URL (default: `https://kuchababok.online/api/node`)
+   - Node API service URL (default: `https://kuchababok.online/api/node/`)
 
 ## Deployment Steps
 
@@ -39,7 +39,7 @@ Add these environment variables in Render dashboard:
 
 | Variable | Value | Notes |
 |----------|-------|-------|
-| `NODE_API_SERVICE_URL` | `https://kuchababok.online/api/node` | Your queue API endpoint |
+| `NODE_API_SERVICE_URL` | `https://kuchababok.online/api/node/` | Your queue API endpoint |
 | `LINK_HARVESTER_API_KEY` | `the_actual_key` | API key for queue access | See in config.json
 
 ### 4. Secret Files (Expand Advanced)
@@ -55,7 +55,7 @@ Filename: `config.json`
   "steam_password": "YOUR_STEAM_PASSWORD",
   "link_harvester_api_key": "the_actual_key",
   "mark_processed_api_url": "https://kuchababok.online/en/links/api/mark-steamid-processed/",
-  "queue_api_url": "https://kuchababok.online/api/node",
+  "queue_api_url": "https://kuchababok.online/api/node/",
   "filter_service": {
     "processing_delay_min": 1.5,
     "processing_delay_max": 3.0,
