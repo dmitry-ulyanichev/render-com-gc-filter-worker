@@ -1,0 +1,26 @@
+{
+  "name": "steam-id-filter-umbrella",
+  "version": "1.0.0",
+  "description": "Umbrella service for Steam ID processing pipeline",
+  "main": "main.js",
+  "scripts": {
+    "start": "node main.js",
+    "dev": "node main.js"
+  },
+  "dependencies": {
+    "steam-user": "^4.29.5",
+    "steam-totp": "^2.1.1",
+    "globaloffensive": "^2.1.4",
+    "steamid": "^2.0.0",
+    "dotenv": "^16.3.1"
+  },
+  "keywords": [
+    "steam",
+    "csgo",
+    "cs2",
+    "profile",
+    "filter"
+  ],
+  "author": "Your Name",
+  "license": "ISC"
+}
