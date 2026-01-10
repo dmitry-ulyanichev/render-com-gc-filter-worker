@@ -8,9 +8,9 @@
     "dev": "node main.js"
   },
   "dependencies": {
-    "steam-user": "^4.29.5",
+    "steam-user": "^5.2.3",
     "steam-totp": "^2.1.1",
-    "globaloffensive": "^2.1.4",
+    "globaloffensive": "^3.2.0",
     "steamid": "^2.0.0",
     "dotenv": "^16.3.1"
   },
