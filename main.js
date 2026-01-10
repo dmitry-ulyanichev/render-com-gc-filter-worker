@@ -11,7 +11,7 @@ require('dotenv').config({ path: path.resolve(__dirname, '../.env') });
 // Configuration
 const CONFIG = {
     LOG_DIR: path.join(__dirname, '../logs'),
-    CONFIG_PATH: path.join(__dirname, 'config.json'),
+    CONFIG_PATH: '/etc/secrets/config.json',
     COOLDOWN_STATE_PATH: path.join(__dirname, 'cooldown-state.json'),
 
     // Detect cloud environment (Render, Heroku, etc.) - skip file logging on ephemeral filesystems
@@ -110,9 +110,13 @@ class GCFilterWorker {
 
         // Load config for cooldown state manager
         const config = this.loadMainConfig();
+
+        if (!config.queue_api_url) throw new Error('Missing queue_api_url in config');
+        if (!config.link_harvester_api_key) throw new Error('Missing link_harvester_api_key in config');
+
         this.cooldownStateManager = new CooldownStateManager(this.instanceId, {
-            QUEUE_API_URL: config.queue_api_url || process.env.NODE_API_SERVICE_URL || 'http://127.0.0.1:3001',
-            API_KEY: config.link_harvester_api_key || process.env.LINK_HARVESTER_API_KEY || 'fa46kPOVnHT2a4aFmQS11dd70290'
+        QUEUE_API_URL: config.queue_api_url,
+        API_KEY: config.link_harvester_api_key
         });
 
         this.setupEventHandlers();

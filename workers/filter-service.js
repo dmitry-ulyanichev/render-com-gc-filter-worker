@@ -13,15 +13,13 @@ const crypto = require('crypto');
 // Configuration
 const CONFIG = {
     MAFILE_PATH: path.join(__dirname, '../steamauth.maFile'),
-    CONFIG_PATH: path.join(__dirname, '../config.json'),
+    CONFIG_PATH: '/etc/secrets/config.json',
     LOG_DIR: path.join(__dirname, '../../logs'),
 
-    // Queue API configuration
-    QUEUE_API_URL: process.env.NODE_API_SERVICE_URL || 'http://127.0.0.1:3001',
-    API_KEY: process.env.LINK_HARVESTER_API_KEY || 'fa46kPOVnHT2a4aFmQS11dd70290',
-
-    // Django API configuration
-    DJANGO_API_URL: process.env.MARK_PROCESSED_API_URL || 'https://kuchababok.online/en/links/api/mark-steamid-processed/',
+    // API settings (must come from /etc/secrets/config.json on Render)
+    QUEUE_API_URL: null,
+    API_KEY: null,
+    DJANGO_API_URL: null,
 
     // Queue settings
     CLAIM_BATCH_SIZE: 10,           // Claim 10 IDs at once from queue
@@ -282,6 +280,21 @@ class FilterService {
                 config.DJANGO_API_URL = userConfig.mark_processed_api_url || config.DJANGO_API_URL;
                 config.API_KEY = userConfig.link_harvester_api_key || config.API_KEY;
                 config.QUEUE_API_URL = userConfig.queue_api_url || config.QUEUE_API_URL;
+
+                if (!config.QUEUE_API_URL || !config.API_KEY || !config.DJANGO_API_URL) {
+                    throw new Error('Missing API settings in /etc/secrets/config.json');
+                }
+
+                // Provide both naming styles for other modules (ConnectionManager/CooldownStateManager)
+                config.queue_api_url = config.QUEUE_API_URL;
+                config.link_harvester_api_key = config.API_KEY;
+                config.mark_processed_api_url = config.DJANGO_API_URL;
+
+                // Make queue helper functions use the loaded config (they reference global CONFIG)
+                CONFIG.QUEUE_API_URL = config.QUEUE_API_URL;
+                CONFIG.API_KEY = config.API_KEY;
+                CONFIG.DJANGO_API_URL = config.DJANGO_API_URL;
+
             }
 
             return config;

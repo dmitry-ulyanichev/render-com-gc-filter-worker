@@ -24,9 +24,12 @@ class ConnectionManager {
         this.instanceId = instanceId;
 
         // Initialize cooldown state manager (Redis with file fallback)
+        if (!config?.queue_api_url) throw new Error('Missing queue_api_url in config');
+        if (!config?.link_harvester_api_key) throw new Error('Missing link_harvester_api_key in config');
+
         this.cooldownStateManager = new CooldownStateManager(instanceId, {
-            QUEUE_API_URL: config.QUEUE_API_URL || config.queue_api_url || 'http://127.0.0.1:3001',
-            API_KEY: config.API_KEY || config.link_harvester_api_key || 'fa46kPOVnHT2a4aFmQS11dd70290'
+        QUEUE_API_URL: config.queue_api_url,
+        API_KEY: config.link_harvester_api_key
         });
 
         // Escalating cooldown configuration

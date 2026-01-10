@@ -27,7 +27,8 @@ function logToFile(message, type = 'info') {
  */
 async function makeApiRequest(method, endpoint, data = null, config) {
     return new Promise((resolve, reject) => {
-        const apiUrl = config.QUEUE_API_URL || 'http://127.0.0.1:3001';
+        const apiUrl = config.QUEUE_API_URL;
+        if (!apiUrl) throw new Error('Missing QUEUE_API_URL in config passed to CooldownStateManager');
         const url = new URL(endpoint, apiUrl);
         const isHttps = url.protocol === 'https:';
         const httpModule = isHttps ? https : http;

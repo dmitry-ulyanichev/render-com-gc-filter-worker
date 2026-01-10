@@ -42,7 +42,7 @@ Add these environment variables in Render dashboard:
 | `NODE_API_SERVICE_URL` | `https://kuchababok.online/api/node` | Your queue API endpoint |
 | `LINK_HARVESTER_API_KEY` | `the_actual_key` | API key for queue access | See in config.json
 
-### 4. Secret Files
+### 4. Secret Files (Expand Advanced)
 
 Upload as **Secret Files** (not environment variables):
 
