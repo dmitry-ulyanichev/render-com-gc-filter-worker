@@ -2,6 +2,7 @@
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
+const http = require('http');
 const FilterService = require('./workers/filter-service');
 const CooldownStateManager = require('./utils/cooldown-api');
 
@@ -104,6 +105,7 @@ class GCFilterWorker {
         this.running = false;
         this.filterWorkerRunning = false;
         this.filterRestartTimer = null;
+        this.healthServer = null;
 
         // Generate instance ID for cooldown state tracking
         this.instanceId = `gc-worker-${crypto.randomBytes(4).toString('hex')}`;
@@ -155,6 +157,32 @@ class GCFilterWorker {
         });
     }
 
+    startHealthServer() {
+        const PORT = process.env.PORT || 10000;
+
+        this.healthServer = http.createServer((req, res) => {
+            if (req.url === '/health' || req.url === '/') {
+                const status = this.getStatus();
+                res.writeHead(200, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({
+                    status: 'ok',
+                    uptime: status.uptime,
+                    filterWorker: {
+                        running: status.filterWorker.running,
+                        inCooldown: status.filterWorker.inCooldown
+                    }
+                }));
+            } else {
+                res.writeHead(404, { 'Content-Type': 'text/plain' });
+                res.end('Not Found');
+            }
+        });
+
+        this.healthServer.listen(PORT, () => {
+            logToFile(`Health server listening on port ${PORT}`);
+        });
+    }
+
     async start() {
         if (this.running) {
             logToFile('Service is already running');
@@ -168,6 +196,9 @@ class GCFilterWorker {
         try {
             // Initialize environment
             initializeEnvironment();
+
+            // Start health server for Render port binding
+            this.startHealthServer();
 
             logToFile('');
             logToFile('SERVICE PURPOSE: Steam GC Filtering (Rate-Limited Operation)');
@@ -378,6 +409,12 @@ class GCFilterWorker {
 
         logToFile('Shutting down GC Filter Worker...');
         this.running = false;
+
+        if (this.healthServer) {
+            this.healthServer.close(() => {
+                logToFile('Health server closed');
+            });
+        }
 
         if (this.filterRestartTimer) {
             clearTimeout(this.filterRestartTimer);
