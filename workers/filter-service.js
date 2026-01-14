@@ -1,4 +1,4 @@
-// filter_raw_ids/workers/filter-service.js - Queue-based filter service
+// gc-filter-worker/workers/filter-service.js - Queue-based filter service
 const SteamUser = require('steam-user');
 const SteamTotp = require('steam-totp');
 const GlobalOffensive = require('globaloffensive');
