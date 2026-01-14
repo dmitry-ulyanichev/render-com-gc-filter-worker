@@ -263,21 +263,21 @@ class ConnectionManager {
             
             // Set flags that main.js can check
             logToFile('✅ Filter worker clean shutdown completed - main service will handle cooldown');
-            
+
             // Stop the filter service gracefully
             if (this.filterService && typeof this.filterService.stop === 'function') {
-                this.filterService.stop();
+                await this.filterService.stop();
             }
-            
+
             // Set a flag that main.js can check
             this.filterService.isBanned = true;
             this.filterService.banEndTime = Date.now() + (cooldownHours * 60 * 60 * 1000);
-            
+
         } catch (error) {
             logToFile(`❌ Error during clean shutdown: ${error.message}`, 'error');
             // Still try to stop the filter service gracefully
             if (this.filterService && typeof this.filterService.stop === 'function') {
-                this.filterService.stop();
+                await this.filterService.stop();
             }
             this.filterService.isBanned = true;
         }

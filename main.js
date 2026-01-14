@@ -400,7 +400,7 @@ class GCFilterWorker {
         }
     }
 
-    shutdown() {
+    async shutdown() {
         if (!this.running) {
             return;
         }
@@ -422,8 +422,9 @@ class GCFilterWorker {
 
         if (this.filterWorker && typeof this.filterWorker.stop === 'function') {
             try {
-                logToFile('Stopping filter worker...');
-                this.filterWorker.stop();
+                logToFile('Stopping filter worker and releasing claimed IDs...');
+                await this.filterWorker.stop();
+                logToFile('✅ Filter worker stopped and all IDs released');
             } catch (error) {
                 logToFile(`Error stopping filter worker: ${error.message}`, 'error');
             }
@@ -435,7 +436,7 @@ class GCFilterWorker {
 
         setTimeout(() => {
             process.exit(0);
-        }, 1000);
+        }, 5000);
     }
 
     getStatus() {

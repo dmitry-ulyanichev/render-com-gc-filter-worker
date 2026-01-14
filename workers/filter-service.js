@@ -1,4 +1,4 @@
-// filter_raw_ids/workers/filter-service-queue.js - Queue-based filter service
+// filter_raw_ids/workers/filter-service.js - Queue-based filter service
 const SteamUser = require('steam-user');
 const SteamTotp = require('steam-totp');
 const GlobalOffensive = require('globaloffensive');
@@ -367,20 +367,20 @@ class FilterService {
             }
         });
 
-        process.on('SIGINT', () => {
+        process.on('SIGINT', async () => {
             logToFile('Received SIGINT, shutting down gracefully...');
-            this.stop();
+            await this.stop();
             setTimeout(() => {
                 process.exit(0);
-            }, 5000);
+            }, 2000);
         });
 
-        process.on('SIGTERM', () => {
+        process.on('SIGTERM', async () => {
             logToFile('Received SIGTERM, shutting down gracefully...');
-            this.stop();
+            await this.stop();
             setTimeout(() => {
                 process.exit(0);
-            }, 5000);
+            }, 2000);
         });
     }
 
@@ -725,7 +725,7 @@ class FilterService {
         };
     }
 
-    stop() {
+    async stop() {
         if (!this.running) {
             return;
         }
@@ -744,15 +744,23 @@ class FilterService {
         if (this.currentBatch.length > 0) {
             const itemIds = this.currentBatch.map(item => item.id);
             logToFile(`Releasing ${itemIds.length} items from current batch back to queue`);
-            this.releaseToFilterQueue(itemIds)
-                .catch(err => logToFile(`Failed to release batch on shutdown: ${err.message}`, 'error'));
+            try {
+                await this.releaseToFilterQueue(itemIds);
+                logToFile(`✅ Successfully released ${itemIds.length} items from batch`);
+            } catch (err) {
+                logToFile(`Failed to release batch on shutdown: ${err.message}`, 'error');
+            }
         }
 
         // Release current item if processing
         if (this.currentItem) {
             logToFile(`Shutdown detected while processing ${this.currentItem.id}, releasing back to queue`);
-            this.releaseToFilterQueue([this.currentItem.id])
-                .catch(err => logToFile(`Failed to release current item on shutdown: ${err.message}`, 'error'));
+            try {
+                await this.releaseToFilterQueue([this.currentItem.id]);
+                logToFile(`✅ Successfully released current item ${this.currentItem.id}`);
+            } catch (err) {
+                logToFile(`Failed to release current item on shutdown: ${err.message}`, 'error');
+            }
         }
 
         // Clean logout
