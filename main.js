@@ -107,8 +107,14 @@ class GCFilterWorker {
         this.filterRestartTimer = null;
         this.healthServer = null;
 
-        // Generate instance ID for cooldown state tracking
-        this.instanceId = `gc-worker-${crypto.randomBytes(4).toString('hex')}`;
+        // Generate instance ID for cooldown state tracking (main service)
+        this.mainInstanceId = `gc-worker-${crypto.randomBytes(4).toString('hex')}`;
+
+        // Generate instance ID for filter worker (persists across filter worker restarts)
+        this.filterInstanceId = `filter-${crypto.randomBytes(4).toString('hex')}`;
+
+        logToFile(`Main service instance ID: ${this.mainInstanceId}`);
+        logToFile(`Filter worker instance ID: ${this.filterInstanceId} (persists across filter worker restarts)`);
 
         // Load config for cooldown state manager
         const config = this.loadMainConfig();
@@ -116,7 +122,7 @@ class GCFilterWorker {
         if (!config.queue_api_url) throw new Error('Missing queue_api_url in config');
         if (!config.link_harvester_api_key) throw new Error('Missing link_harvester_api_key in config');
 
-        this.cooldownStateManager = new CooldownStateManager(this.instanceId, {
+        this.cooldownStateManager = new CooldownStateManager(this.mainInstanceId, {
         QUEUE_API_URL: config.queue_api_url,
         API_KEY: config.link_harvester_api_key
         });
@@ -308,17 +314,18 @@ class GCFilterWorker {
         }
     }
 
-    startFilterWorker() {
+    async startFilterWorker() {
         if (this.filterWorkerRunning) {
             logToFile('Filter worker is already running');
             return;
         }
 
         logToFile('🚀 Starting Game Coordinator Filter Service Worker...');
+        logToFile(`Reusing instance ID: ${this.filterInstanceId}`);
 
         try {
-            this.filterWorker = new FilterService();
-            this.filterWorker.start();
+            this.filterWorker = new FilterService(this.filterInstanceId);
+            await this.filterWorker.start();
             this.filterWorkerRunning = true;
 
             logToFile('✅ Filter Service Worker started successfully');

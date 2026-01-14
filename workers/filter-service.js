@@ -218,7 +218,7 @@ async function markSteamIdProcessedWithRetries(steamID, config, maxRetries = 3) 
 
 // Enhanced main worker class
 class FilterService {
-    constructor() {
+    constructor(instanceId = null) {
         this.steamClient = new SteamUser();
         this.csgo = new GlobalOffensive(this.steamClient);
         this.config = this.loadConfig();
@@ -226,8 +226,8 @@ class FilterService {
         this.running = false;
         this.processingActive = false;
 
-        // Generate unique instance ID
-        this.instanceId = `filter-${crypto.randomBytes(4).toString('hex')}`;
+        // Use provided instance ID or generate new one
+        this.instanceId = instanceId || `filter-${crypto.randomBytes(4).toString('hex')}`;
         logToFile(`Instance ID: ${this.instanceId}`);
 
         // Current batch being processed
@@ -350,7 +350,7 @@ class FilterService {
 
         this.steamClient.on('error', (err) => {
             logToFile(`❌ Steam error: ${err.message}`, 'error');
-            this.connectionManager.handleConnectionError();
+            this.connectionManager.onSteamError(err);
         });
 
         this.steamClient.on('disconnected', (eresult, msg) => {
@@ -406,7 +406,7 @@ class FilterService {
         }
     }
 
-    start() {
+    async start() {
         if (this.running) {
             logToFile('Filter service is already running');
             return;
@@ -422,6 +422,9 @@ class FilterService {
         logToFile(`🔗 Queue API: ${this.config.QUEUE_API_URL}`);
         logToFile(`🌐 Django API: ${this.config.DJANGO_API_URL}`);
 
+        // Clean up any orphaned claims from previous crash/restart
+        await this.cleanupOrphanedClaims();
+
         // Log cooldown info if resuming after ban
         const cooldownInfo = this.connectionManager.getCooldownInfo();
         if (cooldownInfo.totalBans > 0) {
@@ -429,6 +432,24 @@ class FilterService {
         }
 
         this.login();
+    }
+
+    async cleanupOrphanedClaims() {
+        try {
+            logToFile('🧹 Checking for orphaned claims from previous run...');
+            const response = await makeQueueApiRequest('POST', 'queue/filter/release-instance', {
+                instance_id: this.instanceId
+            });
+
+            if (response.released_count > 0) {
+                logToFile(`✅ Released ${response.released_count} orphaned items from previous run`);
+            } else {
+                logToFile('✅ No orphaned claims found');
+            }
+        } catch (error) {
+            logToFile(`⚠️ Warning: Could not clean up orphaned claims: ${error.message}`, 'error');
+            logToFile('Continuing startup anyway...', 'error');
+        }
     }
 
     startProcessing() {
