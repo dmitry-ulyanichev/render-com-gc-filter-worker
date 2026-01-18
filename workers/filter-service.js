@@ -1,4 +1,4 @@
-// gc-filter-worker/workers/filter-service.js - Queue-based filter service
+// gc-filter-worker/workers/filter-service.js - Queue-based filter service 
 const SteamUser = require('steam-user');
 const SteamTotp = require('steam-totp');
 const GlobalOffensive = require('globaloffensive');
@@ -8,7 +8,6 @@ const path = require('path');
 const https = require('https');
 const http = require('http');
 const ConnectionManager = require('./connection-manager');
-const crypto = require('crypto');
 
 // Configuration
 const CONFIG = {
@@ -185,8 +184,9 @@ async function markSteamIdProcessed(steamID, config) {
     });
 }
 
-async function markSteamIdProcessedWithRetries(steamID, config, maxRetries = 3) {
+async function markSteamIdProcessedWithRetries(steamID, config, maxRetries = 4) {
     let lastError;
+    const backoffDelays = [2000, 4000, 8000, 16000]; // 2s → 4s → 8s → 16s
 
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
         try {
@@ -204,21 +204,23 @@ async function markSteamIdProcessedWithRetries(steamID, config, maxRetries = 3) 
             }
         } catch (err) {
             lastError = err;
-            logToFile(`Failed to mark ${steamID} as processed (attempt ${attempt}): ${err.message}`, 'error');
+            logToFile(`Failed to mark ${steamID} as processed (attempt ${attempt}/${maxRetries}): ${err.message}`, 'error');
 
             if (attempt < maxRetries) {
-                await delay(2000);
+                const delayMs = backoffDelays[attempt - 1];
+                logToFile(`⏳ Waiting ${delayMs/1000}s before retry...`);
+                await delay(delayMs);
             }
         }
     }
 
-    logToFile(`❌ Failed to mark ${steamID} as processed after ${maxRetries} attempts: ${lastError.message}`, 'error');
+    logToFile(`❌ Failed to mark ${steamID} as processed after ${maxRetries} attempts with exponential backoff: ${lastError.message}`, 'error');
     return false;
 }
 
 // Enhanced main worker class
 class FilterService {
-    constructor(instanceId = null) {
+    constructor() {
         this.steamClient = new SteamUser();
         this.csgo = new GlobalOffensive(this.steamClient);
         this.config = this.loadConfig();
@@ -226,8 +228,8 @@ class FilterService {
         this.running = false;
         this.processingActive = false;
 
-        // Use provided instance ID or generate new one
-        this.instanceId = instanceId || `filter-${crypto.randomBytes(4).toString('hex')}`;
+        // Use environment variable for instance ID (required on Render.com)
+        this.instanceId = process.env.GC_FILTER_WORKER_INSTANCE_ID;
         logToFile(`Instance ID: ${this.instanceId}`);
 
         // Current batch being processed
@@ -437,7 +439,7 @@ class FilterService {
     async cleanupOrphanedClaims() {
         try {
             logToFile('🧹 Checking for orphaned claims from previous run...');
-            const response = await makeQueueApiRequest('POST', 'queue/filter/release-instance', {
+            const response = await makeQueueApiRequest('POST', '/queue/filter/release-instance', {
                 instance_id: this.instanceId
             });
 
@@ -483,8 +485,18 @@ class FilterService {
                 const processResult = await this.processSteamIDWithRetries(item.id, this.config.MAX_RETRIES);
 
                 if (processResult.success) {
-                    if (processResult.passed) {
-                        // Success: Passed filters - add to processor queue and complete in filter queue
+                    // Profile check succeeded - but did marking succeed?
+                    if (processResult.markingSucceeded === false) {
+                        // Profile check passed but Django API failed - release back to queue
+                        await this.releaseToFilterQueue([item.id]);
+                        logToFile(`🔄 ${item.id} released back to queue - profile check succeeded but marking failed after exponential backoff`);
+
+                        if (!this.failureStats[item.id]) {
+                            this.failureStats[item.id] = 0;
+                        }
+                        this.failureStats[item.id]++;
+                    } else if (processResult.passed) {
+                        // Success: Passed filters AND marked - add to processor queue and complete in filter queue
                         await this.addToProcessorQueue(item.id, item.username);
                         await this.completeInFilterQueue([item.id]);
                         logToFile(`✅ ${item.id} passed filters and added to processor queue`);
@@ -496,7 +508,7 @@ class FilterService {
                         // Filtering failure: ID doesn't meet criteria - complete in filter queue (remove it)
                         await this.completeInFilterQueue([item.id]);
                         logToFile(`🗑️ ${item.id} filtered out: ${processResult.filterReason || 'does not meet criteria'}`);
-                        
+
                         this.requestCount++;
                         this.consecutiveTimeouts = 0;
                     }
@@ -529,7 +541,7 @@ class FilterService {
 
     async claimBatchFromQueue() {
         try {
-            const response = await makeQueueApiRequest('POST', 'queue/filter/claim', {
+            const response = await makeQueueApiRequest('POST', '/queue/filter/claim', {
                 instance_id: this.instanceId,
                 count: this.config.CLAIM_BATCH_SIZE
             });
@@ -543,7 +555,7 @@ class FilterService {
 
     async completeInFilterQueue(itemIds) {
         try {
-            await makeQueueApiRequest('POST', 'queue/filter/complete', {
+            await makeQueueApiRequest('POST', '/queue/filter/complete', {
                 instance_id: this.instanceId,
                 items: itemIds
             });
@@ -555,7 +567,7 @@ class FilterService {
 
     async releaseToFilterQueue(itemIds) {
         try {
-            await makeQueueApiRequest('POST', 'queue/filter/release', {
+            await makeQueueApiRequest('POST', '/queue/filter/release', {
                 instance_id: this.instanceId,
                 items: itemIds
             });
@@ -567,7 +579,7 @@ class FilterService {
 
     async addToProcessorQueue(steamID, username) {
         try {
-            await makeQueueApiRequest('POST', 'queue/processor/add', {
+            await makeQueueApiRequest('POST', '/queue/processor/add', {
                 [username]: [steamID.toString()]
             });
             logToFile(`➡️ Added ${steamID} to processor queue for user ${username}`);
@@ -601,11 +613,11 @@ class FilterService {
             processResult = { success: false, error: lastError };
         }
 
-        // Mark as processed in Django database
-        try {
-            await markSteamIdProcessedWithRetries(steamID64, this.config);
-        } catch (err) {
-            logToFile(`Warning: Could not mark ${steamID64} as processed in database: ${err.message}`, 'error');
+        // Mark as processed in Django database - track success
+        let markingSucceeded = false;
+        if (processResult.success) {
+            markingSucceeded = await markSteamIdProcessedWithRetries(steamID64, this.config);
+            processResult.markingSucceeded = markingSucceeded;
         }
 
         return processResult;

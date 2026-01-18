@@ -10,7 +10,8 @@ Before deploying, prepare:
 2. **steamauth.maFile** - Steam Guard authentication file for the account
 3. **API Credentials** - From your main server:
    - `LINK_HARVESTER_API_KEY` (same as other instances)
-   - Node API service URL (default: `https://kuchababok.online/api/node/`)
+   - `GC_FILTER_WORKER_INSTANCE_ID` e.g. filter-render1
+   - Node API service URL (default: `https://kuchababok.online/api/node`)
 
 ## Deployment Steps
 

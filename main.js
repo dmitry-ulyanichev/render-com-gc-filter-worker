@@ -1,7 +1,6 @@
 // gc-filter-worker/main.js - Dedicated Game Coordinator filter service
 const fs = require('fs');
 const path = require('path');
-const crypto = require('crypto');
 const http = require('http');
 const FilterService = require('./workers/filter-service');
 const CooldownStateManager = require('./utils/cooldown-api');
@@ -107,14 +106,10 @@ class GCFilterWorker {
         this.filterRestartTimer = null;
         this.healthServer = null;
 
-        // Generate instance ID for cooldown state tracking (main service)
-        this.mainInstanceId = `gc-worker-${crypto.randomBytes(4).toString('hex')}`;
+        // Use environment variable for instance ID (required on Render.com)
+        this.instanceId = process.env.GC_FILTER_WORKER_INSTANCE_ID;
 
-        // Generate instance ID for filter worker (persists across filter worker restarts)
-        this.filterInstanceId = `filter-${crypto.randomBytes(4).toString('hex')}`;
-
-        logToFile(`Main service instance ID: ${this.mainInstanceId}`);
-        logToFile(`Filter worker instance ID: ${this.filterInstanceId} (persists across filter worker restarts)`);
+        logToFile(`Instance ID: ${this.instanceId}`);
 
         // Load config for cooldown state manager
         const config = this.loadMainConfig();
@@ -122,7 +117,7 @@ class GCFilterWorker {
         if (!config.queue_api_url) throw new Error('Missing queue_api_url in config');
         if (!config.link_harvester_api_key) throw new Error('Missing link_harvester_api_key in config');
 
-        this.cooldownStateManager = new CooldownStateManager(this.mainInstanceId, {
+        this.cooldownStateManager = new CooldownStateManager(this.instanceId, {
         QUEUE_API_URL: config.queue_api_url,
         API_KEY: config.link_harvester_api_key
         });
@@ -321,10 +316,9 @@ class GCFilterWorker {
         }
 
         logToFile('🚀 Starting Game Coordinator Filter Service Worker...');
-        logToFile(`Reusing instance ID: ${this.filterInstanceId}`);
 
         try {
-            this.filterWorker = new FilterService(this.filterInstanceId);
+            this.filterWorker = new FilterService();
             await this.filterWorker.start();
             this.filterWorkerRunning = true;
 
