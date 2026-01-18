@@ -439,7 +439,7 @@ class FilterService {
     async cleanupOrphanedClaims() {
         try {
             logToFile('🧹 Checking for orphaned claims from previous run...');
-            const response = await makeQueueApiRequest('POST', '/queue/filter/release-instance', {
+            const response = await makeQueueApiRequest('POST', 'queue/filter/release-instance', {
                 instance_id: this.instanceId
             });
 
@@ -541,7 +541,7 @@ class FilterService {
 
     async claimBatchFromQueue() {
         try {
-            const response = await makeQueueApiRequest('POST', '/queue/filter/claim', {
+            const response = await makeQueueApiRequest('POST', 'queue/filter/claim', {
                 instance_id: this.instanceId,
                 count: this.config.CLAIM_BATCH_SIZE
             });
@@ -555,7 +555,7 @@ class FilterService {
 
     async completeInFilterQueue(itemIds) {
         try {
-            await makeQueueApiRequest('POST', '/queue/filter/complete', {
+            await makeQueueApiRequest('POST', 'queue/filter/complete', {
                 instance_id: this.instanceId,
                 items: itemIds
             });
@@ -567,7 +567,7 @@ class FilterService {
 
     async releaseToFilterQueue(itemIds) {
         try {
-            await makeQueueApiRequest('POST', '/queue/filter/release', {
+            await makeQueueApiRequest('POST', 'queue/filter/release', {
                 instance_id: this.instanceId,
                 items: itemIds
             });
@@ -579,7 +579,7 @@ class FilterService {
 
     async addToProcessorQueue(steamID, username) {
         try {
-            await makeQueueApiRequest('POST', '/queue/processor/add', {
+            await makeQueueApiRequest('POST', 'queue/processor/add', {
                 [username]: [steamID.toString()]
             });
             logToFile(`➡️ Added ${steamID} to processor queue for user ${username}`);
