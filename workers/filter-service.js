@@ -308,7 +308,10 @@ class FilterService {
 
     loadMaFile() {
         try {
-            return JSON.parse(fs.readFileSync(this.config.MAFILE_PATH, 'utf8'));
+            logToFile(`Loading maFile from: ${this.config.MAFILE_PATH}`);
+            const maFile = JSON.parse(fs.readFileSync(this.config.MAFILE_PATH, 'utf8'));
+            logToFile(`✅ maFile loaded successfully. Has shared_secret: ${!!maFile.shared_secret}, account_name: ${maFile.account_name || 'not set'}`);
+            return maFile;
         } catch (error) {
             logToFile(`Error loading maFile: ${error.message}`, 'error');
             throw error;
@@ -348,6 +351,16 @@ class FilterService {
         this.csgo.on('disconnectedFromGC', (reason) => {
             logToFile(`⚠️ Disconnected from GC: ${reason}`);
             this.processingActive = false;
+        });
+
+        this.steamClient.on('steamGuard', (domain, callback, lastCodeWrong) => {
+            logToFile(`⚠️ steamGuard event fired! domain=${domain}, lastCodeWrong=${lastCodeWrong}`, 'error');
+            if (domain) {
+                logToFile(`Steam is requesting EMAIL code (domain: ${domain}) - this account may not have mobile authenticator`, 'error');
+            } else {
+                logToFile(`Steam is requesting APP code - the provided twoFactorCode may be wrong or expired`, 'error');
+            }
+            // Don't call callback - let it timeout so we can see the issue
         });
 
         this.steamClient.on('error', (err) => {
@@ -391,6 +404,7 @@ class FilterService {
             const code = SteamTotp.generateAuthCode(this.maFile.shared_secret);
 
             logToFile(`Logging into Steam as ${this.config.steam_username}...`);
+            logToFile(`Generated TOTP code: ${code ? code.substring(0, 2) + '***' : 'EMPTY'}`);
 
             this.steamClient.logOn({
                 accountName: this.config.steam_username,
