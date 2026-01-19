@@ -380,10 +380,31 @@ class GCFilterWorker {
             return;
         }
 
-        // Check if worker has died unexpectedly
+        // Check if worker has died unexpectedly or if ban period has expired
         try {
             if (this.filterWorker && typeof this.filterWorker.isRunning === 'function') {
                 const isRunning = this.filterWorker.isRunning();
+
+                // Check if ban period has expired
+                if (!isRunning && this.filterWorker.isBanned) {
+                    const banEndTime = this.filterWorker.banEndTime || 0;
+                    const now = Date.now();
+
+                    if (now >= banEndTime) {
+                        logToFile('⏰ Ban period expired, restarting filter worker...');
+                        this.filterWorkerRunning = false;
+                        this.filterWorker = null;
+
+                        setTimeout(() => {
+                            if (this.running) {
+                                this.startFilterWorker();
+                            }
+                        }, 5000);
+                    }
+                    // Still in ban period - do nothing, let it wait
+                    return;
+                }
+
                 if (!isRunning && !this.filterWorker.isBanned) {
                     logToFile('🔍 Filter worker died unexpectedly (not banned) - restarting...');
                     this.filterWorkerRunning = false;
