@@ -510,10 +510,10 @@ class FilterService {
                         }
                         this.failureStats[item.id]++;
                     } else if (processResult.passed) {
-                        // Success: Passed filters AND marked - add to processor queue and complete in filter queue
-                        await this.addToProcessorQueue(item.id, item.username);
+                        // Success: Passed filters AND marked - add to validator queue and complete in filter queue
+                        await this.addToValidatorQueue(item.id, item.username);
                         await this.completeInFilterQueue([item.id]);
-                        logToFile(`✅ ${item.id} passed filters and added to processor queue`);
+                        logToFile(`✅ ${item.id} passed filters and added to validator queue`);
 
                         this.requestCount++;
                         this.lastSuccessTime = Date.now();
@@ -591,14 +591,14 @@ class FilterService {
         }
     }
 
-    async addToProcessorQueue(steamID, username) {
+    async addToValidatorQueue(steamID, username) {
         try {
-            await makeQueueApiRequest('POST', 'queue/processor/add', {
+            await makeQueueApiRequest('POST', 'queue/validator/add', {
                 [username]: [steamID.toString()]
             });
-            logToFile(`➡️ Added ${steamID} to processor queue for user ${username}`);
+            logToFile(`➡️ Added ${steamID} to validator queue for user ${username}`);
         } catch (error) {
-            logToFile(`Failed to add to processor queue: ${error.message}`, 'error');
+            logToFile(`Failed to add to validator queue: ${error.message}`, 'error');
             throw error;
         }
     }
